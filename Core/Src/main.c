@@ -75,6 +75,7 @@ void I2C2_Init() {
 	I2C1 -> CR1 |= (1 << 0);									// I2C1 Enabled
 }
 
+// Checks if I2C bus is busy
 uint8_t I2C_Check_Busy() {
 	if (I2C1 -> SR1 & (1 << 1)) {
 		return 1;
@@ -82,11 +83,13 @@ uint8_t I2C_Check_Busy() {
 	return 0;
 }
 
+// Generates start condition
 void I2C_Start() {
 	I2C1 -> CR1 |= (1 << 8);
 	while (!(I2C1 -> SR1 & (1 << 0)));
 }
 
+// Sends device address and clears associated flags
 void I2C_Send_Address(uint8_t addr, uint8_t read) {
 	I2C1 -> DR |= (addr << 1) | read;
 	while(!(I2C1 -> SR1 & (1 << 1)));
@@ -96,16 +99,19 @@ void I2C_Send_Address(uint8_t addr, uint8_t read) {
 	(void) temp;
 }
 
+// Sends a byte of data to device from master
 void I2C_Send_Data(uint8_t data) {
 	I2C1 -> DR = data;
 	while(!(I2C1 -> SR1 & (1 << 2)));
 }
 
+// Generates stop condition
 void I2C_Stop() {
 	I2C1 -> CR1 |= (1 << 9);
 	while(!(I2C1 -> SR1 & (1 << 4)));
 }
 
+// Entire write to a device
 void I2C_Write(uint8_t addr, uint8_t data) {
 	while(I2C_Check_Busy());
 	I2C_Start();
@@ -114,11 +120,13 @@ void I2C_Write(uint8_t addr, uint8_t data) {
 	I2C_Stop();
 }
 
+// Initializes BH1750 light sensor
 void Light_Sensor_Init() {
 	I2C_Write(LIGHT_ADDR, LIGHT_ON);
 	I2C_Write(LIGHT_ADDR, LIGHT_CONT);
 }
 
+// Returns the value from the light sensor
 uint16_t Light_Read() {
 	uint8_t upper, lower;
 
