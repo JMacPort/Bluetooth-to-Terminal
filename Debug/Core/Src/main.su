@@ -1,0 +1,13 @@
+../Core/Src/main.c:12:5:main	8	static
+../Core/Src/main.c:22:6:USART2_Init	4	static
+../Core/Src/main.c:39:6:USART1_Init	4	static
+../Core/Src/main.c:56:6:I2C2_Init	4	static
+../Core/Src/main.c:78:9:I2C_Check_Busy	4	static
+../Core/Src/main.c:85:6:I2C_Start	4	static
+../Core/Src/main.c:90:6:I2C_Send_Address	24	static
+../Core/Src/main.c:99:6:I2C_Send_Data	16	static
+../Core/Src/main.c:104:6:I2C_Stop	4	static
+../Core/Src/main.c:109:6:I2C_Write	16	static
+../Core/Src/main.c:117:6:Light_Sensor_Init	8	static
+../Core/Src/main.c:122:10:Light_Read	16	static
+../Core/Src/main.c:146:5:__io_putchar	16	static
