@@ -8,14 +8,35 @@
 // Prototypes
 void USART2_Init();
 void USART1_Init();
+void I2C1_Init();
+void Light_Sensor_Init();
+uint16_t Light_Read();
 
 int main() {
-	USART2_Init();
+    uint16_t value;
 
-	printf("Hello\r\n");
-	while (1) {
+    USART2_Init();
+    I2C1_Init();
+    Light_Sensor_Init();
 
-	}
+    // Long delay to ensure everything is settled
+    for(volatile int i = 0; i < 100000; i++);
+
+    // Single print to clear any buffer issues
+    printf("\r\n");
+
+    value = Light_Read();
+
+    // Delay before printing result
+    for(volatile int i = 0; i < 100000; i++);
+
+    printf("Light Level: %d lux\r\n", value);
+
+    while(1) {
+    	for(volatile int i = 0; i < 1000000; i++);
+    	value = Light_Read();
+    	printf("Light Level: %d lux\r\n", value);
+    }
 }
 
 // USART2 - ST-Link Setup
@@ -44,7 +65,7 @@ void USART1_Init() {
 	GPIOB -> MODER |= (2 << (2 * 6)) | (2 << (2 * 7));
 
 	GPIOB -> AFR[0] &= ~((15 << (4 * 6)) | (15 << (4 * 7)));	// Alternate Function to AF7
-	GPIOB -> AFR[0] |= (2 << (4 * 6)) | (2 << (4 * 7));
+	GPIOB -> AFR[0] |= (7 << (4 * 6)) | (7 << (4 * 7));
 
 	USART1 -> BRR = 0x0683;										// 9600 Baud Rate
 
@@ -53,7 +74,7 @@ void USART1_Init() {
 }
 
 // I2C for sensor/s; Maybe more than 1 but starting with BH1750 light sensor
-void I2C2_Init() {
+void I2C1_Init() {
 	RCC -> AHB1ENR |= (1 << 1);									// GPIOB
 	RCC -> APB1ENR |= (1 << 21);								// I2C1
 
@@ -77,7 +98,7 @@ void I2C2_Init() {
 
 // Checks if I2C bus is busy
 uint8_t I2C_Check_Busy() {
-	if (I2C1 -> SR1 & (1 << 1)) {
+	if (I2C1 -> SR2 & (1 << 1)) {
 		return 1;
 	}
 	return 0;
@@ -91,7 +112,7 @@ void I2C_Start() {
 
 // Sends device address and clears associated flags
 void I2C_Send_Address(uint8_t addr, uint8_t read) {
-	I2C1 -> DR |= (addr << 1) | read;
+	I2C1 -> DR = (addr << 1) | read;
 	while(!(I2C1 -> SR1 & (1 << 1)));
 
 	uint8_t temp = I2C1 -> SR1;
@@ -108,7 +129,6 @@ void I2C_Send_Data(uint8_t data) {
 // Generates stop condition
 void I2C_Stop() {
 	I2C1 -> CR1 |= (1 << 9);
-	while(!(I2C1 -> SR1 & (1 << 4)));
 }
 
 // Entire write to a device
