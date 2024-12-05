@@ -11,31 +11,22 @@ void USART1_Init();
 void I2C1_Init();
 void Light_Sensor_Init();
 uint16_t Light_Read();
+void Bluetooth_Print(const char*);
 
 int main() {
-    uint16_t value;
-
     USART2_Init();
+    USART1_Init();
     I2C1_Init();
     Light_Sensor_Init();
 
-    // Long delay to ensure everything is settled
-    for(volatile int i = 0; i < 100000; i++);
-
-    // Single print to clear any buffer issues
-    printf("\r\n");
-
-    value = Light_Read();
-
-    // Delay before printing result
-    for(volatile int i = 0; i < 100000; i++);
-
-    printf("Light Level: %d lux\r\n", value);
-
     while(1) {
-    	for(volatile int i = 0; i < 1000000; i++);
-    	value = Light_Read();
-    	printf("Light Level: %d lux\r\n", value);
+        uint16_t value = Light_Read();
+        char buffer[50];
+        sprintf(buffer, "Light Level: %d\r\n", value);
+        Bluetooth_Print(buffer);
+        printf("Light Reading: %d\r\n", value);
+        // Delay between readings
+        for(volatile int i = 0; i < 1000000; i++);
     }
 }
 
@@ -180,6 +171,15 @@ int __io_putchar(int c) {
     USART2 -> SR &= ~(1 << 5);
 
     return c;
+}
+
+void Bluetooth_Print(const char* str) {
+    while(*str) {
+        while(!(USART1->SR & (1 << 7)));
+        USART1->DR = *str;
+        while(!(USART1->SR & (1 << 6)));
+        str++;
+    }
 }
 
 // Maybe bluetooth can submit commands to get readings and to update
