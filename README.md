@@ -37,5 +37,5 @@ Reads light levels from a BH1750 light sensor and transmit the data via Bluetoot
 3. Pair HC-05 with computer (PIN: 1234)
 4. Run Python script to receive data
 
-[!Terminal Outputs](/images/Terminal_Outputs.png)
-[!Connections](/images/Connections.jpeg)
+![Terminal Outputs](/images/Terminal_Outputs.png)
+![Connections](/images/Connections.jpeg)
