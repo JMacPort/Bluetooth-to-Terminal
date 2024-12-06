@@ -1,9 +1,15 @@
 #include "main.h"
 #include <stdio.h>
+#include <stdbool.h>
+#include <string.h>
 
+// Macros
 #define LIGHT_ADDR 			0x23
 #define LIGHT_ON			0x01
 #define LIGHT_CONT			0x10
+
+#define RX_BUFFER_SIZE 		64
+#define CMD_LENGTH 			30
 
 // Prototypes
 void USART2_Init();
@@ -13,20 +19,54 @@ void Light_Sensor_Init();
 uint16_t Light_Read();
 void Bluetooth_Print(const char*);
 
+// Circular Buffer setup; Ensures a max of 64 characters only
+volatile char rx_buffer[RX_BUFFER_SIZE];
+volatile uint8_t rx_head = 0;
+volatile uint8_t rx_tail = 0;
+// True when full command is read
+volatile bool cmd_ready = false;
+
 int main() {
     USART2_Init();
     USART1_Init();
     I2C1_Init();
     Light_Sensor_Init();
 
+    printf("System Ready\r\n");
+
     while(1) {
-        uint16_t value = Light_Read();
-        char buffer[50];
-        sprintf(buffer, "Light Level: %d\r\n", value);
-        Bluetooth_Print(buffer);
-        printf("Light Reading: %d\r\n", value);
-        // Delay between readings
-        for(volatile int i = 0; i < 1000000; i++);
+        if(cmd_ready) {
+            printf("Command received!\r\n");
+
+            char cmd[CMD_LENGTH];
+            uint8_t i = 0;
+
+            while(rx_tail != rx_head && i < CMD_LENGTH-1) {
+                cmd[i++] = rx_buffer[rx_tail];
+                rx_tail = (rx_tail + 1) % RX_BUFFER_SIZE;
+            }
+            cmd[i] = '\0';
+            cmd_ready = false;
+
+            printf("Command is: %s\r\n", cmd);
+
+            // Process commands
+            if(strcmp(cmd, "light read\r\n") == 0) {
+                char str[30];
+                uint16_t value = Light_Read();
+                sprintf(str, "Light Value: %d\r\n", value);
+                Bluetooth_Print(str);
+            }
+            else if(strcmp(cmd, "status\r\n") == 0) {
+                Bluetooth_Print("System Status: OK\r\n");
+            }
+            else if(strcmp(cmd, "help\r\n") == 0) {
+                Bluetooth_Print("1. light read\r\n2. status\r\n3. help\r\n");
+            }
+            else {
+                Bluetooth_Print("Unknown Command\r\n");
+            }
+        }
     }
 }
 
@@ -60,8 +100,28 @@ void USART1_Init() {
 
 	USART1 -> BRR = 0x0683;										// 9600 Baud Rate
 
-	USART1 -> CR1 |= (1 << 2) | (1 << 3);						// Transmitter/Receiver Enabled
+	USART1 -> CR1 |= (1 << 2) | (1 << 3) | (1 << 5);			// Transmitter/Receiver/Read Interrupt Enabled
+
+	NVIC -> ISER[1] |= (1 << 5);								// Enables USART1 Global Interrupt
+
 	USART1 -> CR1 |= (1 << 13);									// USART1 Enabled
+}
+
+// Interrupts whenever a character is sent from Python; Stores characters in a cicular buffer and continues until full command is received
+void USART1_IRQHandler(void) {
+    if(USART1->SR & (1 << 5)) {
+        char c = USART1->DR;
+        uint8_t next_head = (rx_head + 1) % RX_BUFFER_SIZE;
+
+        if(next_head != rx_tail) {
+            rx_buffer[rx_head] = c;
+            rx_head = next_head;
+
+            if(c == '\n') {
+                cmd_ready = true;
+            }
+        }
+    }
 }
 
 // I2C for sensor/s; Maybe more than 1 but starting with BH1750 light sensor
@@ -173,13 +233,13 @@ int __io_putchar(int c) {
     return c;
 }
 
+// Prints a string to the USART1 (Python) terminal
 void Bluetooth_Print(const char* str) {
     while(*str) {
         while(!(USART1->SR & (1 << 7)));
         USART1->DR = *str;
-        while(!(USART1->SR & (1 << 6)));
         str++;
     }
+    while(!(USART1->SR & (1 << 6)));
 }
 
-// Maybe bluetooth can submit commands to get readings and to update
